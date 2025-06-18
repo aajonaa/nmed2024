@@ -1,6 +1,6 @@
 #!/bin/bash
 
-conda activate adrd
+# conda activate adrd
 
 ps=16
 vs=128
@@ -14,7 +14,7 @@ outdim=8192
 # export LD_PRELOAD=tcmalloc.so:$LD_PRELOAD
 
 # Set data path to TotalSegmentator dataset
-data_path="./data/MRI/TotalsegmentatorMRI_dataset_v100"
+data_path="data/MRI/TotalsegmentatorMRI_dataset_v100"
 
 # Set checkpoint directory
 ckptdir="results/totalsegmentator_ssl_swinunetr"
@@ -29,4 +29,4 @@ echo "Batch size: ${bs}"
 #CUDA_VISIBLE_DEVICES=0
 OMP_NUM_THREADS=1 NCCL_DEBUG=INFO python -m torch.distributed.run --nproc_per_node=1 --nnodes=1 --master_port=29759 \
             main_swinunetr.py --logdir ${ckptdir} --epochs 50 --num_steps=50000 --data_path ${data_path} --batch_size ${bs} --num_workers 3 \
-            --use_checkpoint --eval_num 100 --cache_dataset
+            --use_checkpoint --eval_num 100 --smartcache_dataset

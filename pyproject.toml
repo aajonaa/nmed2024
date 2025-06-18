@@ -1,14 +1,32 @@
-# In your pyproject.toml
+# pyproject.toml
 
 [project]
 name = "my-cuda118-project"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
+    # PyTorch dependencies (source is configured below in [tool.uv.sources])
     "torch",
     "torchvision",
     "torchaudio",
-    # ... add your other dependencies like numpy, pandas, etc.
+
+    # Core ML & Medical Imaging
+    "monai>=1.1",
+    "torchio>=0.15",
+    "scikit-learn>=1.2.2",
+    "shap>=0.43",
+
+    # Data Handling & Scientific Computing
+    "numpy>=1.24",
+    "pandas>=1.5.3",
+    "scipy>=1.10",
+    "nibabel>=5.0",
+
+    # Utilities & Others
+    "icecream",
+    "tqdm>=4.62",
+    "wandb",
+    "matplotlib>=3.7.2",
 ]
 
 # --- UV Configuration for CUDA 11.8 ---

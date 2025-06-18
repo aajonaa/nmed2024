@@ -75,17 +75,24 @@ def read_df(filename, return_dicts=True, labels=None, mri_seq='T1', multilabel=F
 def get_fpaths(data_dir, stripped=False):
     if os.path.exists(os.path.join(data_dir, 'fpaths.txt')):
         fpaths = list(open(os.path.join(data_dir, 'fpaths.txt'), 'r').read().split('\n'))
-        fpaths = [{"image": f.replace(".nii", "_stripped.nii") if stripped else f} for f in fpaths]
+        fpaths = [{"image": f.replace(".nii", "_stripped.nii") if stripped else f} for f in fpaths if f.strip()]
     else:
         fpaths = []
         for root, dirnames, filenames in os.walk(data_dir):
             for fname in filenames:
-                if fname.endswith('.nii'):
-                    ic(fname)
-                    fpaths.append({"image": os.path.join(root, fname)})
-        with open(os.path.join(data_dir, 'fpaths.txt'), 'w') as f:
-            f.write('\n'.join([f["image"] for f in fpaths]))
-        f.close()
+                # Support both .nii and .nii.gz files
+                if fname.endswith('.nii') or fname.endswith('.nii.gz'):
+                    # For TotalSegmentator dataset, use the mri.nii.gz files
+                    if fname == 'mri.nii.gz' or not fname.startswith('seg_'):
+                        full_path = os.path.join(root, fname)
+                        print(f"Found MRI file: {full_path}")
+                        fpaths.append({"image": full_path})
+        
+        # Save the file paths for future use
+        if fpaths:
+            with open(os.path.join(data_dir, 'fpaths.txt'), 'w') as f:
+                f.write('\n'.join([f["image"] for f in fpaths]))
+            f.close()
 
     return fpaths
                 

@@ -1,0 +1,32 @@
+# In your pyproject.toml
+
+[project]
+name = "my-cuda118-project"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    # ... add your other dependencies like numpy, pandas, etc.
+]
+
+# --- UV Configuration for CUDA 11.8 ---
+
+# Rule: Where to find specific packages
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchaudio = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+# Definition: The special PyTorch warehouse
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true

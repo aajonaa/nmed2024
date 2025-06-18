@@ -188,3 +188,11 @@ shap_example.py
 plots/check.csv
 *_cohorts/
 *_updated/
+
+# pretrained models weights
+*.pt
+*.h5
+*.nii
+*.npz
+*.gz
+*dataset_v100

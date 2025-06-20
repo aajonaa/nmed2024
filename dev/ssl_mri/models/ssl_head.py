@@ -28,7 +28,7 @@ class SSLHead(nn.Module):
             feature_size=args.feature_size,
             use_checkpoint=True,
         )
-        pretrained_pth = "~/dev/ssl_mri/pretrained_models/model_swinvit.pt"
+        pretrained_pth = "/root/github/nmed2024/dev/ssl_mri/pretrained_models/model_swinvit.pt"
         model_dict = torch.load(pretrained_pth, map_location="cpu")
         model_dict["state_dict"] = {k.replace("swinViT.", "module."): v for k, v in model_dict["state_dict"].items()}
         ic(model_dict["state_dict"].keys())

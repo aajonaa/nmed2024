@@ -36,9 +36,14 @@ from functools import reduce
 from PIL import ImageFilter, ImageOps
 from monai.utils.type_conversion import convert_to_tensor
 from torch.utils.data._utils.collate import default_collate
+import numpy as np
 import sys
 sys.path.append('../')
 from data import MonaiDataset
+import icecream
+from icecream import install, ic
+install()
+ic.configureOutput(includeContext=True)
 
 # labels = ['NC', 'MCI', 'DE', 'AD', 'LBD', 'VD', 'PRD', 'FTD', 'NPH', 'SEF', 'PSY', 'TBI', 'ODE']
 
@@ -181,7 +186,75 @@ def monai_collate(samples_list, dataset, dtype=torch.half):
     if isinstance(samples_list[0], list):
         samples_list = list(reduce(lambda x,y: x + y, samples_list, []))
     ic(len(samples_list))
-    return torch.stack([convert_to_tensor(s) for s in samples_list])
+
+    # 添加严格的形状验证
+    if len(samples_list) == 0:
+        ic("警告: samples_list为空，递归调用获取新样本")
+        return monai_collate([dataset[random.randint(0, len(dataset)-1)] for _ in range(orig_len)], dataset)
+
+    # 检查所有张量的形状
+    tensor_shapes = []
+    valid_samples = []
+    invalid_samples = []
+
+    for i, sample in enumerate(samples_list):
+        tensor = convert_to_tensor(sample)
+        shape = tensor.shape
+        tensor_shapes.append(shape)
+
+        # 检查是否有0维度（无效张量）
+        if any(dim == 0 for dim in shape):
+            ic(f"发现无效张量 {i}: 形状 {shape}")
+            invalid_samples.append((i, shape))
+        else:
+            valid_samples.append((i, tensor, shape))
+
+    ic(f"总样本数: {len(samples_list)}, 有效样本数: {len(valid_samples)}, 无效样本数: {len(invalid_samples)}")
+
+    if len(invalid_samples) > 0:
+        ic(f"无效样本形状: {[shape for _, shape in invalid_samples]}")
+
+    # 如果没有有效样本，递归调用获取新样本
+    if len(valid_samples) == 0:
+        ic("警告: 没有有效样本，递归调用获取新样本")
+        return monai_collate([dataset[random.randint(0, len(dataset)-1)] for _ in range(orig_len)], dataset)
+
+    # 检查有效样本的形状是否一致
+    if len(valid_samples) > 1:
+        reference_shape = valid_samples[0][2]
+        inconsistent_samples = []
+        consistent_samples = []
+
+        for idx, tensor, shape in valid_samples:
+            if shape != reference_shape:
+                ic(f"形状不一致的样本 {idx}: {shape} vs 参考形状 {reference_shape}")
+                inconsistent_samples.append((idx, shape))
+            else:
+                consistent_samples.append(tensor)
+
+        if len(inconsistent_samples) > 0:
+            ic(f"形状不一致的样本数: {len(inconsistent_samples)}")
+            ic(f"形状一致的样本数: {len(consistent_samples)}")
+
+            # 如果一致的样本太少，递归调用补充
+            if len(consistent_samples) < orig_len // 2:  # 如果一致样本少于原始数量的一半
+                ic("一致样本数量不足，递归调用补充样本")
+                return monai_collate([dataset[random.randint(0, len(dataset)-1)] for _ in range(orig_len)], dataset)
+
+            # 使用形状一致的样本
+            final_samples = consistent_samples
+        else:
+            # 所有有效样本形状都一致
+            final_samples = [tensor for _, tensor, _ in valid_samples]
+    else:
+        # 只有一个有效样本
+        final_samples = [valid_samples[0][1]]
+
+    ic(f"最终用于堆叠的样本数: {len(final_samples)}")
+    if len(final_samples) > 0:
+        ic(f"最终样本形状: {final_samples[0].shape}")
+
+    return torch.stack(final_samples)
 
 def monai_collate_singles(samples_list, dataset, dtype=torch.half, return_dict=False, labels=None, multilabel=False):
     orig_len = len(samples_list)

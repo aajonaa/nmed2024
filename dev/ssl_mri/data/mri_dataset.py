@@ -72,28 +72,63 @@ def read_df(filename, return_dicts=True, labels=None, mri_seq='T1', multilabel=F
     return filenames, labels
 
 
-def get_fpaths(data_dir, stripped=False):
-    if os.path.exists(os.path.join(data_dir, 'fpaths.txt')):
-        fpaths = list(open(os.path.join(data_dir, 'fpaths.txt'), 'r').read().split('\n'))
-        fpaths = [{"image": f.replace(".nii", "_stripped.nii") if stripped else f} for f in fpaths if f.strip()]
+def get_fpaths(data_dir, stripped=False, modality='t1ce'):
+    """
+    Get file paths for BraTS2020 dataset
+    Args:
+        data_dir: Path to BraTS2020_TrainingData directory
+        stripped: Not used for BraTS (kept for compatibility)
+        modality: Which modality to use ('t1', 't1ce', 't2', 'flair', 'all')
+    Returns:
+        List of dictionaries with image paths
+    """
+    fpaths_file = os.path.join(data_dir, f'fpaths_brats_{modality}.txt')
+
+    if os.path.exists(fpaths_file):
+        print(f"Loading cached file paths from {fpaths_file}")
+        fpaths = list(open(fpaths_file, 'r').read().split('\n'))
+        if modality == 'all':
+            # For multi-modal, each line contains 4 paths separated by ','
+            fpaths = [{"image": f.split(',')} for f in fpaths if f.strip()]
+        else:
+            fpaths = [{"image": f} for f in fpaths if f.strip()]
     else:
+        print(f"Scanning BraTS2020 directory: {data_dir}")
         fpaths = []
-        for root, dirnames, filenames in os.walk(data_dir):
-            for fname in filenames:
-                # Support both .nii and .nii.gz files
-                if fname.endswith('.nii') or fname.endswith('.nii.gz'):
-                    # For TotalSegmentator dataset, use the mri.nii.gz files
-                    if fname == 'mri.nii.gz' or not fname.startswith('seg_'):
-                        full_path = os.path.join(root, fname)
-                        print(f"Found MRI file: {full_path}")
-                        fpaths.append({"image": full_path})
-        
+
+        # BraTS2020 directory structure: BraTS20_Training_XXX/
+        for subject_dir in sorted(os.listdir(data_dir)):
+            subject_path = os.path.join(data_dir, subject_dir)
+            if os.path.isdir(subject_path) and subject_dir.startswith('BraTS20_Training_'):
+
+                if modality == 'all':
+                    # Get all 4 modalities for multi-modal training
+                    t1_path = os.path.join(subject_path, f"{subject_dir}_t1.nii")
+                    t1ce_path = os.path.join(subject_path, f"{subject_dir}_t1ce.nii")
+                    t2_path = os.path.join(subject_path, f"{subject_dir}_t2.nii")
+                    flair_path = os.path.join(subject_path, f"{subject_dir}_flair.nii")
+
+                    # Check if all modalities exist
+                    if all(os.path.exists(p) for p in [t1_path, t1ce_path, t2_path, flair_path]):
+                        fpaths.append({"image": [t1_path, t1ce_path, t2_path, flair_path]})
+                        print(f"Found multi-modal sample: {subject_dir}")
+                else:
+                    # Get single modality
+                    modality_path = os.path.join(subject_path, f"{subject_dir}_{modality}.nii")
+                    if os.path.exists(modality_path):
+                        fpaths.append({"image": modality_path})
+                        print(f"Found {modality} file: {modality_path}")
+
         # Save the file paths for future use
         if fpaths:
-            with open(os.path.join(data_dir, 'fpaths.txt'), 'w') as f:
-                f.write('\n'.join([f["image"] for f in fpaths]))
-            f.close()
+            with open(fpaths_file, 'w') as f:
+                if modality == 'all':
+                    f.write('\n'.join([','.join(f["image"]) for f in fpaths]))
+                else:
+                    f.write('\n'.join([f["image"] for f in fpaths]))
+            print(f"Saved {len(fpaths)} file paths to {fpaths_file}")
 
+    print(f"Total {modality} samples found: {len(fpaths)}")
     return fpaths
                 
 

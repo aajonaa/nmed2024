@@ -321,10 +321,12 @@ def main():
                                         output_device=args.gpu,)
                                         # find_unused_parameters=False)
         # model._set_static_graph()
-    data_list = get_fpaths(args.data_path)
+    # For BraTS2020, use single modality (t1ce) for SSL fine-tuning
+    data_list = get_fpaths(args.data_path, modality='t1ce')
     random.shuffle(data_list)
     train_list, val_list = data_list[:int(0.8*len(data_list))], data_list[int(0.8*len(data_list)):]
     ic(len(train_list), len(val_list))
+    print(f"BraTS2020 SSL fine-tuning: {len(train_list)} train, {len(val_list)} val samples")
     train_loader, test_loader = get_loader(train_list, val_list=val_list, num_workers=args.num_workers,
                                         a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max,
                                         roi_x=args.roi_x, roi_y=args.roi_y, roi_z=args.roi_z, sw_batch_size=args.sw_batch_size,

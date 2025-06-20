@@ -203,3 +203,4 @@ MRI_emb/
 nmed/
 *.pth*.pth
 dev/ssl_mri/runs/results/*.pth
+dev/ssl_mri/runs/results/*.pth

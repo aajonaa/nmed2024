@@ -1,0 +1,25 @@
+Using Python 3.11.7 environment at: nmed
+Resolved 88 packages in 1.70s
+   Building my-cuda118-project @ file:///root/github/nmed2024
+      Built my-cuda118-project @ file:///root/github/nmed2024
+Prepared 1 package in 734ms
+Uninstalled 1 package in 0.87ms
+Installed 1 package in 0.75ms
+ ~ my-cuda118-project==0.1.0 (from file:///root/github/nmed2024)
+/root/github/nmed2024/nmed/lib/python3.11/site-packages/monai/utils/module.py:367: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  pkg = __import__(module)  # top level module
+Image backbone: SwinUNETREMB
+Loading training dataset ... 
+./data/train_vld_test_split_updated/demo_train.csv
+179 are selected for mode 0.
+Out of 392 features in configuration file, [] are unavailable in data file.
+Out of 13 labels in configuration file, 0 are unavailable in data file.
+imaging..
+fea:  filename
+  0%|          | 0/179 [00:00<?, ?it/s]100%|██████████| 179/179 [00:00<00:00, 11870.42it/s]
+179 MRI embeddings found with shape (768,)
+179 179
+IMG_MODE: 1. Total mri embeddings found: 179
+Out of 179 samples, 0 are dropped due to complete feature missing.
+Out of 179 samples, 0 are dropped due to complete label missing.
+1 his_SEX

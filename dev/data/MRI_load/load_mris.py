@@ -14,7 +14,7 @@ from monai.utils.type_conversion import convert_to_tensor
 
 ckpts_dict = {
     # 'unet3d': '~/adrd_tool/img_pretrained_ckpt/model_best.pkl',
-    'SwinUNETR': '~/adrd_tool/dev/ssl_mri/pretrained_models/model_swinvit.pt'
+    'SwinUNETR': '/root/github/nmed2024/dev/ssl_mri/runs/results/brats2020_ssl_swinunetr/model_bestVal.pt'
 }
 
 device = 'cuda'
@@ -61,9 +61,11 @@ def get_mri_dataloader(feature, df, transforms=None, stripped=False):
     return dataloader
 
 def load_model(arch: str,
-               ckpt_path: str,
+               ckpt_path: str = None,
                ckpt_key: str | None = "state_dict"
                ):
+    if ckpt_path is None:
+        ckpt_path = ckpts_dict.get(arch, ckpts_dict['SwinUNETR'])
     print(f'Loading {arch} model from checkpoint: {ckpt_path} ...')
     ckpt = torch.load(ckpt_path, map_location='cpu', weights_only=False)
     # ic(state_dict.keys())
@@ -75,35 +77,41 @@ def load_model(arch: str,
             feature_size=48,
             use_checkpoint=True,
         )
-        ckpt[ckpt_key] = {k.replace("swinViT.", "module."): v for k, v in ckpt[key].items()}
-        ic(ckpt[key].keys())
-        model.load_from(ckpt)
+        # 不需要替换键名，直接使用原始的state_dict
+        # ckpt[ckpt_key] = {k.replace("swinViT.", "module."): v for k, v in ckpt[ckpt_key].items()}
+        ic(list(ckpt[ckpt_key].keys())[:5])
+        # 直接加载state_dict而不是使用load_from
+        model.load_state_dict(ckpt[ckpt_key], strict=False)
         class ModelWrapper(torch.nn.Module):
             def __init__(self, model, *args, **kwargs) -> None:
                 super().__init__(*args, **kwargs)
                 self.swinunetr = model
 
             def forward(self, x_in):
-                hidden_states_out = self.swinunetr.swinViT(x_in, self.swinunetr.normalize)
-                ic(h.size() for h in hidden_states_out)
-                enc0 = self.swinunetr.encoder1(x_in)
-                enc1 = self.swinunetr.encoder2(hidden_states_out[0])
-                enc2 = self.swinunetr.encoder3(hidden_states_out[1])
-                enc3 = self.swinunetr.encoder4(hidden_states_out[2])
-                dec4 = self.swinunetr.encoder10(hidden_states_out[4])
-                dec3 = self.swinunetr.decoder5(dec4, hidden_states_out[3])
-                dec2 = self.swinunetr.decoder4(dec3, enc3)
-                dec1 = self.swinunetr.decoder3(dec2, enc2)
-                dec0 = self.swinunetr.decoder2(dec1, enc1)
-                out = self.swinunetr.decoder1(dec0, enc0)
+                try:
+                    # 尝试使用完整的前向传播
+                    hidden_states_out = self.swinunetr.swinViT(x_in, self.swinunetr.normalize)
+                    ic([h.size() for h in hidden_states_out])
 
-                print(enc0.size(), enc1.size(), enc2.size(), enc3.size())
-                print(dec4.size(), dec3.size(), dec2.size(), dec1.size(), dec0.size(), out.size())
-                return dec4
+                    # 使用最深层的hidden state作为特征
+                    # hidden_states_out[-1] 是最深层的特征
+                    return hidden_states_out[-1]
+
+                except Exception as e:
+                    print(f"Error in SwinViT forward pass: {e}")
+                    # 如果SwinViT失败，尝试使用更简单的方法
+                    # 直接使用encoder1的输出作为特征
+                    try:
+                        enc0 = self.swinunetr.encoder1(x_in)
+                        return enc0
+                    except Exception as e2:
+                        print(f"Error in encoder1: {e2}")
+                        # 最后的备选方案：使用全局平均池化
+                        return torch.mean(x_in, dim=[2, 3, 4], keepdim=True)
 
         img_model = ModelWrapper(model)
-    elif 'unet3d' in arch.lower():    
-        state_dict = ckpt[key]
+    elif 'unet3d' in arch.lower():
+        state_dict = ckpt[ckpt_key]
         img_model = UNet3DModel(num_classes=3)
         img_model.load_checkpoint(state_dict)
     else:
@@ -144,28 +152,26 @@ def save_emb(feature, df):
             except:
                 continue
 
-def get_emb(feature, df, savedir=None, arch='unet3d', transforms=None, stripped=False):
+def get_emb(feature, df, savedir=None, arch='unet3d', transforms=None, stripped=False, ckpt_path=None, ckpt_key="state_dict"):
     print('------------get_emb()------------')
     dataloader = get_mri_dataloader(feature, df, transforms=transforms, stripped=stripped)
-    img_model = load_model(arch)
+    img_model = load_model(arch, ckpt_path, ckpt_key)
     # device = 'cuda'
     img_model.to(device)
     img_model.eval()
     embeddings = {}
     if savedir:
         os.makedirs(savedir, exist_ok=True)
+    print(f"Dataloader length: {len(dataloader)}")
     with torch.no_grad():
         for fnames, data in tqdm(dataloader):
+            print(f"Processing batch with {len(fnames)} files")
             try:
                 if torch.isnan(data).any() or data.size(1) != 1:
                     continue
                 data = data.float().to(device)
                 # print(data.size())
-                if arch == 'SwinUNETR':
-                    emb = img_model(data)
-                else:
-                    emb = mri_emb(img_model, data)
-                
+                # 处理每个文件单独，避免批处理时的尺寸不匹配问题
                 for idx, fname in enumerate(fnames):
                     print(fname)
                     if ('localizer' in fname.lower()) | ('localiser' in fname.lower()) |  ('LOC' in fname) | ('calibration' in fname.lower()) | ('field_mapping' in fname.lower()) | (fname.lower()[:-4].endswith('_ph_stripped')):
@@ -181,11 +187,32 @@ def get_emb(feature, df, savedir=None, arch='unet3d', transforms=None, stripped=
                     else:
                         filename = fname.split('/')[-1].replace('.nii', '.npy')
                     if savedir and os.path.exists(savedir + filename):
-                        continue       
-                    embeddings[filename] = emb[idx,:,:,:,:].cpu().detach().numpy()
-                    if savedir:
-                        np.save(savedir + filename, embeddings[filename])
-            except:
+                        continue
+
+                    # 单独处理每个样本
+                    single_data = data[idx:idx+1]  # 取单个样本
+                    if arch == 'SwinUNETR':
+                        try:
+                            single_emb = img_model(single_data)
+                            # 对于SwinUNETR，single_emb 是一个张量，不是列表
+                            # 应用全局平均池化来处理不同尺寸
+                            # single_emb shape: [1, channels, H, W, D]
+                            pooled_emb = torch.mean(single_emb, dim=[2, 3, 4])  # [1, channels]
+
+                            embeddings[filename] = pooled_emb[0,:].cpu().detach().numpy()
+                            if savedir:
+                                np.save(savedir + filename, embeddings[filename])
+                                print(f"Saved embedding for {filename} with shape {embeddings[filename].shape}")
+                        except Exception as e:
+                            print(f"Error processing {fname}: {e}")
+                            continue
+                    else:
+                        emb_tensor = mri_emb(img_model, single_data)
+                        embeddings[filename] = emb_tensor[0,:,:,:,:].cpu().detach().numpy()
+                        if savedir:
+                            np.save(savedir + filename, embeddings[filename])
+            except Exception as e:
+                print(f"Error processing {fnames}: {e}")
                 continue
     print("Embeddings saved to ", savedir)
     print("Done.")

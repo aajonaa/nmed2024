@@ -18,7 +18,6 @@ data_path="data/MRI/BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData"
 
 # Set checkpoint directory
 ckptdir="results/brats2020_ssl_swinunetr"
-mkdir -p ${ckptdir}
 
 echo "Starting BraTS2020 SSL fine-tuning..."
 echo "Data path: ${data_path}"
@@ -31,5 +30,5 @@ echo "Batch size: ${bs}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 OMP_NUM_THREADS=1 NCCL_DEBUG=INFO python -m torch.distributed.run --nproc_per_node=4 --nnodes=1 --master_port=29759 \
-            main_swinunetr.py --logdir ${ckptdir} --epochs 50 --num_steps=500 --data_path ${data_path} --batch_size ${bs} --num_workers 0 \
+            main_swinunetr.py --logdir ${ckptdir} --epochs 50 --num_steps=500 --data_path ${data_path} --batch_size ${bs} --num_workers 4 \
             --use_checkpoint --eval_num 100 --smartcache_dataset

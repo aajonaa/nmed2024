@@ -2,8 +2,8 @@
 
 # run this script from adrd_tool/
 
-conda activate adrd
-pip install .
+source nmed/bin/activate
+uv pip install -e .
 
 # install the package
 # cd adrd_tool
@@ -17,7 +17,7 @@ vld_path="${prefix}/data/train_vld_test_split_updated/demo_vld.csv"
 test_path="${prefix}/data/train_vld_test_split_updated/nacc_test_with_np_cli.csv"
 cnf_file="${prefix}/dev/data/toml_files/default_conf_new.toml"
 # imgnet_ckpt="${prefix}/dev/ckpt/ckpt_densenet_232_all_stripped_mni.pt"
-imgnet_ckpt="${prefix}/dev/ssl_mri/checkpoints/SwinUNETR128_FTenc_pretrained_cls_NC_MCI_DE_MNI_4layers_bs4/checkpoint_best.pth"
+imgnet_ckpt="${prefix}/dev/ssl_mri/runs/results/brats2020_ssl_swinunetr/model_bestVal.pt"
 
 
 # Note for setting the flags

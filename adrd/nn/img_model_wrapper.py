@@ -75,37 +75,64 @@ class ImagingModelWrapper(torch.nn.Module):
             else:
                 self.dim = 768
 
-        if "vit" in self.arch.lower() or "swinunetr" in self.arch.lower():    
+        if "vit" in self.arch.lower() or "swinunetr" in self.arch.lower():
             dim = self.dim
             if self.fusion_stage == 'middle':
-                downsample = torch.nn.ModuleList()
-                # print('Number of layers: ', self.layers)
-                for i in range(self.layers):
-                    if i == self.layers - 1:
-                        dim_out = self.out_dim
-                        ks = 2
-                        stride = 2
-                    else:
-                        dim_out = dim // 2
-                        ks = 2
-                        stride = 2
+                # Check if this is embedding mode
+                if "emb" in self.arch.lower():
+                    # For embedding mode, use linear layers instead of conv1d
+                    downsample = torch.nn.ModuleList()
+                    for i in range(self.layers):
+                        if i == self.layers - 1:
+                            dim_out = self.out_dim
+                        else:
+                            dim_out = dim // 2
 
-                    downsample.append(
-                        torch.nn.Conv1d(in_channels=dim, out_channels=dim_out, kernel_size=ks, stride=stride)
-                    )
-                    
-                    dim = dim_out
-                    
-                    downsample.append(
-                        torch.nn.BatchNorm1d(dim)
-                    )
-                    downsample.append(
-                        torch.nn.ReLU()
-                    )
-                # downsample.append(torch.nn.Linear(8, self.out_dim))
-                    
-                    
-                self.downsample = torch.nn.Sequential(*downsample)
+                        downsample.append(
+                            torch.nn.Linear(in_features=dim, out_features=dim_out)
+                        )
+
+                        dim = dim_out
+
+                        if i < self.layers - 1:  # Don't add activation after last layer
+                            downsample.append(
+                                torch.nn.BatchNorm1d(dim)
+                            )
+                            downsample.append(
+                                torch.nn.ReLU()
+                            )
+
+                    self.downsample = torch.nn.Sequential(*downsample)
+                else:
+                    # For non-embedding mode, use conv1d layers as before
+                    downsample = torch.nn.ModuleList()
+                    # print('Number of layers: ', self.layers)
+                    for i in range(self.layers):
+                        if i == self.layers - 1:
+                            dim_out = self.out_dim
+                            ks = 2
+                            stride = 2
+                        else:
+                            dim_out = dim // 2
+                            ks = 2
+                            stride = 2
+
+                        downsample.append(
+                            torch.nn.Conv1d(in_channels=dim, out_channels=dim_out, kernel_size=ks, stride=stride)
+                        )
+
+                        dim = dim_out
+
+                        downsample.append(
+                            torch.nn.BatchNorm1d(dim)
+                        )
+                        downsample.append(
+                            torch.nn.ReLU()
+                        )
+                    # downsample.append(torch.nn.Linear(8, self.out_dim))
+
+
+                    self.downsample = torch.nn.Sequential(*downsample)
             elif self.fusion_stage == 'late':
                 self.downsample = torch.nn.Identity()
             else:
@@ -165,22 +192,22 @@ class ImagingModelWrapper(torch.nn.Module):
                 out = torch.flatten(out, 1)
                 out = self.downsample(out)
         else:
-            # print(x.size())
-            if "swinunetr" in self.arch.lower():
+            # Embedding mode processing
+            # print(f"Input shape: {x.size()}")
+
+            # For embedding mode, input should be (batch_size, embedding_dim)
+            if len(x.shape) == 3 and x.shape[1] == 1:
+                # Remove singleton dimension if present: (batch, 1, 768) -> (batch, 768)
                 x = torch.squeeze(x, dim=1)
-                x = x.view(x.size(0),self.dim, -1)
-            # print('x: ', x.size())    
+
+            # print(f'x after squeeze: {x.size()}')
             out = self.downsample(x)
-            # print('out: ', out.size())
-            if self.fusion_stage == 'middle':
-                if "vit" in self.arch.lower() or "swinunetr" in self.arch.lower():
-                    out = torch.mean(out, dim=-1)
-                    # out = torch.mean(out, dim=1)
-                else:
-                    out = torch.squeeze(out, dim=1)
-            elif self.fusion_stage == 'late':
-                pass
-            # print(out.shape)
+            # print(f'out after downsample: {out.size()}')
+
+            # No need for additional processing in embedding mode since we use linear layers
+            # The output should already be (batch_size, out_dim)
+
+            # print(f"Final output shape: {out.shape}")
 
         return out
 

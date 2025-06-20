@@ -11,7 +11,7 @@ dependencies = [
     "torchaudio",
 
     # Core ML & Medical Imaging
-    "monai>=1.1",
+    "monai==1.1",
     "torchio>=0.15",
     "scikit-learn>=1.2.2",
     "shap>=0.43",

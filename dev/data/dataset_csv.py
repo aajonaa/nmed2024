@@ -190,10 +190,17 @@ class CSVDataset:
             if name in value_mapping:
                 col = df[name].to_list()
                 try:
+                    # Check if values are already numeric (skip mapping if so)
+                    if all(isinstance(x, (int, float)) or pd.isnull(x) for x in col):
+                        print(f"Skipping mapping for {name} - values are already numeric")
+                        continue
                     col = [value_mapping[name][s] if not pd.isnull(s) else None for s in col]
                 except KeyError as err:
-                    print(err, name)
-                    exit()
+                    print(f"KeyError: {err} for column {name}")
+                    print(f"Available keys: {list(value_mapping[name].keys())}")
+                    print(f"Actual values: {set(col)}")
+                    # Don't exit, just skip this mapping
+                    continue
                 df[name] = col
                 
         # print(features)

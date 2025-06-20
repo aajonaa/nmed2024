@@ -1,5 +1,9 @@
 [features]
 
+	[feature.filename]
+	type = "imaging"
+	shape = [768]
+
 	[feature.his_NACCREAS]
 	type = "categorical"
 	num_categories = 3

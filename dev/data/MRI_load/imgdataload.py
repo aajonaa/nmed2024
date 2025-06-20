@@ -40,6 +40,9 @@ def read_csv(df, feature, num_classes=3):
         print(row[feature])
         if isinstance(row[feature], list):
             filenames.extend(row[feature])
+        elif isinstance(row[feature], str):
+            # 处理字符串路径（如BraTS2020数据）
+            filenames.append(row[feature])
         # else:
         #     filenames.append(None)
 
@@ -48,14 +51,22 @@ def read_csv(df, feature, num_classes=3):
         # labels = torch.LongTensor([0 if int(row['NC']) else (1 if int(row['MCI']) else 2) for _,row in df.iterrows()])
         labels = []
         for _,row in df.iterrows():
-            if isinstance(row['filename'], str) and row['filename'].endswith('.npy'):
-                if np.isnan(row['NC']) and int(row['NC']):
-                    labels.append(0)
-                elif np.isnan(row['MCI']) and int(row['MCI']):
-                    labels.append(1)
+            # 对于BraTS2020数据，使用label列或默认标签
+            if 'label' in row:
+                labels.append(int(row['label']))
+            elif 'NC' in row and 'MCI' in row:
+                # 原始的NACC数据处理逻辑
+                if isinstance(row['filename'], str) and row['filename'].endswith('.npy'):
+                    if np.isnan(row['NC']) and int(row['NC']):
+                        labels.append(0)
+                    elif np.isnan(row['MCI']) and int(row['MCI']):
+                        labels.append(1)
+                    else:
+                        labels.append(2)
                 else:
-                    labels.append(2)
+                    labels.append(-1)
             else:
+                # 默认标签（用于embeddings生成）
                 labels.append(-1)
         labels = torch.LongTensor(labels)
 

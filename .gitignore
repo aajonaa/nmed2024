@@ -196,3 +196,4 @@ plots/check.csv
 *.npz
 *.gz
 *dataset_v100
+*.zip

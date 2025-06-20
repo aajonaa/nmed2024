@@ -199,3 +199,4 @@ plots/check.csv
 *.zip
 *.npy
 *BraTS2020_TrainingData/
+MRI_emb/

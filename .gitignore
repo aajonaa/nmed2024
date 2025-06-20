@@ -197,3 +197,5 @@ plots/check.csv
 *.gz
 *dataset_v100
 *.zip
+*.npy
+*BraTS2020_TrainingData/

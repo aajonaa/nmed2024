@@ -201,4 +201,4 @@ plots/check.csv
 *BraTS2020_TrainingData/
 MRI_emb/
 nmed/
-*.pth
+*.pth*.pth

@@ -44,13 +44,11 @@ from adrd.utils.misc import get_metrics, print_metrics
 
 #%%
 # define paths and variables
-basedir=".."
-
-fname = 'name_of_file' # the name of file you want to save the model predictions to
+fname = 'prediction_results' # the name of file you want to save the model predictions to
 save_path = f'./model_predictions/' # the path where the model predictions will be saved
-dat_file = 'path/to/test/data' # the test data path
-cnf_file = f'{basedir}/dev/data/toml_files/default_conf_new.toml' # the path configuration file
-ckpt_path = 'path/to/saved/checkpoint' # the path to the model checkpoint
+dat_file = 'data/train_vld_test_split_updated/nacc_test_with_np_cli.csv' # the test data path
+cnf_file = './dev/data/toml_files/default_conf_new.toml' # the path configuration file
+ckpt_path = 'dev/ckpt/debug/model.pt' # the path to the model checkpoint
 
 dat_file = pd.read_csv(dat_file)
 print(dat_file)
@@ -98,6 +96,8 @@ def save_predictions(dat_tst, test_file, scores_proba, scores, save_path=None, f
     if 'cdr_CDRGLOB' in test_file:
         cdr = test_file['cdr_CDRGLOB']
         cdr_df = pd.DataFrame(cdr)
+    else:
+        cdr_df = None
     id_df = pd.DataFrame(ids)
     if 'fhs' in fname:
         fhsid = ids = test_file[['id', 'idtype', 'framid']]
@@ -111,7 +111,8 @@ def save_predictions(dat_tst, test_file, scores_proba, scores, save_path=None, f
             df = pd.concat([id_df, y_true_df, scores_proba_df, cdr_df], axis=1)
         else:
             df = pd.concat([id_df, y_true_df, scores_proba_df], axis=1)
-    print(len(y_true_df), len(scores_df), len(scores_proba_df), len(cdr_df), len(id_df))
+    cdr_len = len(cdr_df) if cdr_df is not None else 0
+    print(len(y_true_df), len(scores_df), len(scores_proba_df), cdr_len, len(id_df))
     if if_save:
         df.to_csv(save_path + filename, index=False)
         
@@ -137,7 +138,7 @@ def generate_performance_report(dat_tst, y_pred, scores_proba):
 
     return met
 
-def generate_predictions_for_data_file(dat_file, labels, tst_filter_transform=None):
+def generate_predictions_for_data_file(dat_file, tst_filter_transform=None):
     # initialize datasets
     seed = 0
     print('Done.\nLoading testing dataset ...')
@@ -236,7 +237,7 @@ if __name__ == '__main__':
         tst_filter_transform = None
         
     # 1. Generate predictions for a test case file
-    df_pred, met = generate_predictions_for_data_file(dat_file, labels, tst_filter_transform)
+    df_pred, met = generate_predictions_for_data_file(dat_file, tst_filter_transform)
     #%%
     met_df = pd.DataFrame(met)
     met_df.to_csv(save_path + f'{fname}_performance_report.pdf', index=False)

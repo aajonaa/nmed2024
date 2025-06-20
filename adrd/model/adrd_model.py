@@ -751,7 +751,7 @@ class ADRDModel(BaseEstimator):
         :type img_dict: _type_, optional
         """        
         # load state_dict
-        state_dict = torch.load(filepath, map_location=map_location)
+        state_dict = torch.load(filepath, map_location=map_location, weights_only=False)
 
         # load data modalities
         self.src_modalities: dict[str, dict[str, Any]] = state_dict.pop('src_modalities')
